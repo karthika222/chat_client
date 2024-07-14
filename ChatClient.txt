@@ -1,0 +1,67 @@
+import java.io.*;
+import java.net.*;
+import java.util.concurrent.*;
+
+public class ChatClient {
+    private static String serverAddress = "localhost";
+    private static int serverPort = 12345;
+
+    public static void main(String[] args) {
+        try (Socket socket = new Socket(serverAddress, serverPort)) {
+            System.out.println("Connected to chat server");
+
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+            executor.execute(new Receiver(socket));
+            executor.execute(new Sender(socket));
+
+            executor.shutdown();
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static class Receiver implements Runnable {
+        private Socket socket;
+        private BufferedReader in;
+
+        public Receiver(Socket socket) {
+            this.socket = socket;
+        }
+
+        public void run() {
+            try {
+                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                String message;
+                while ((message = in.readLine()) != null) {
+                    System.out.println("Received: " + message);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static class Sender implements Runnable {
+        private Socket socket;
+        private PrintWriter out;
+        private BufferedReader userInput;
+
+        public Sender(Socket socket) {
+            this.socket = socket;
+        }
+
+        public void run() {
+            try {
+                out = new PrintWriter(socket.getOutputStream(), true);
+                userInput = new BufferedReader(new InputStreamReader(System.in));
+                String message;
+                while ((message = userInput.readLine()) != null) {
+                    out.println(message);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
